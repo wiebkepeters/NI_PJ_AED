@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+#%%
 from pathlib import Path
 from typing import Tuple
 
@@ -23,9 +24,9 @@ class TUTSEDSynthetic2016(Dataset):
                  input_features_file_name: str,
                  target_values_input_name: str) \
             -> None:
-        """TUT SED Synthetic 2016 dataset class. 
-        
-        :param root_dir: The root directory for the dataset. 
+        """TUT SED Synthetic 2016 dataset class.
+
+        :param root_dir: The root directory for the dataset.
         :type root_dir: str
         :param split: The split for the dataset (e.g. training).
         :type split: str
@@ -65,3 +66,5 @@ class TUTSEDSynthetic2016(Dataset):
         return self.x[item], self.y[item]
 
 # EOF
+
+# %%
