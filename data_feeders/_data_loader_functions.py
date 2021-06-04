@@ -69,7 +69,8 @@ def get_tut_sed_data_loader(root_dir: str,
     return DataLoader(
         dataset=dataset, batch_size=batch_size,
         shuffle=shuffle if split == 'training' else False,
-        drop_last=drop_last)
+        drop_last=drop_last,
+        collate_fn=custom_collate_fn)
 
 # EOF
 
