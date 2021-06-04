@@ -54,7 +54,7 @@ def _sed_epoch(model: Module,
         if optimizer is not None:
             optimizer.zero_grad()
 
-        x, y = [i.float().to(device) for i in data]
+        x, y = [i.to(device) for i in data]
 
         y_hat: Tensor = model(x)
 
