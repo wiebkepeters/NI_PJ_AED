@@ -12,8 +12,8 @@ data_loader:
   shuffle: Yes
   drop_last: Yes
   root_dir: 'data'
-  input_features_file_name: '' # Add the file name of the file having the input values.
-  target_values_input_name: '' # Add the file name of the file having the target values.
+  input_features_file_name: 'data.npy' # Add the file name of the file having the input values.
+  target_values_input_name: 'labels.npy' # Add the file name of the file having the target values.
 #
 # Settings for the optimizer
 optimizer:
