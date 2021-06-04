@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #%%
+import numpy as np
 from pathlib import Path
 from typing import Tuple
 
@@ -41,8 +42,17 @@ class TUTSEDSynthetic2016(Dataset):
         x_path = data_path.joinpath(input_features_file_name)
         y_path = data_path.joinpath(target_values_input_name)
 
-        self.x: ndarray = file_io.load_numpy_object(x_path)
-        self.y: ndarray = file_io.load_numpy_object(y_path)
+        data = file_io.load_numpy_object(x_path)
+        for d in data:
+            d = d.astype(np.float32)
+
+        labels = file_io.load_numpy_object(y_path)
+        for l in labels:
+            l = l.astype(np.float32)
+
+
+        self.x: ndarray = data
+        self.y: ndarray = labels
 
     def __len__(self) \
             -> int:

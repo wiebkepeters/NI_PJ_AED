@@ -20,9 +20,8 @@ def custom_collate_fn(batch):
     target = []
 
     for item in batch:
-
-        target.append(torch.as_tensor(item[1]))
-        data.append(torch.as_tensor(item[0]))
+        target.append(torch.as_tensor(item[1], dtype=torch.float32))
+        data.append(torch.as_tensor(item[0], dtype=torch.float32))
 
     target = pad_sequence(target).permute(1, 0, 2)
     data = pad_sequence(data).permute(1, 0, 2)
