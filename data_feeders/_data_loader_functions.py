@@ -1,15 +1,33 @@
+# %%
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import torch
 from typing import Dict
 
 from torch.utils.data import DataLoader
+from torch.nn.utils.rnn import pad_sequence
 
 from ._tut_sed_synthetic_2016 import TUTSEDSynthetic2016
 
 __author__ = 'Konstantinos Drossos -- Tampere University'
 __docformat__ = 'reStructuredText'
 __all__ = ['get_tut_sed_data_loader']
+
+
+def custom_collate_fn(batch):
+
+    data = []
+    target = []
+
+    for item in batch:
+
+        target.append(torch.as_tensor(item[1]))
+        data.append(torch.as_tensor(item[0]))
+
+    target = pad_sequence(target).permute(1, 0, 2)
+    data = pad_sequence(data).permute(1, 0, 2)
+
+    return [data, target]
 
 
 def get_tut_sed_data_loader(root_dir: str,
@@ -54,3 +72,5 @@ def get_tut_sed_data_loader(root_dir: str,
         drop_last=drop_last)
 
 # EOF
+
+# %%
