@@ -11,7 +11,7 @@ data_loader:
   batch_size: 16
   shuffle: Yes
   drop_last: Yes
-  root_dir: 'data'
+  root_dir: 'MyDrive/Data_Code/'
   input_features_file_name: 'data.npy' # Add the file name of the file having the input values.
   target_values_input_name: 'labels.npy' # Add the file name of the file having the target values.
 #
