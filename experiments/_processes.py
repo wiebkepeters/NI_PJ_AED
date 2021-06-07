@@ -7,6 +7,7 @@ from time import time
 from copy import deepcopy
 
 from torch import no_grad, cat, zeros, Tensor
+from torch.nn.utils.rnn import pad_sequence
 from torch.optim import optimizer as pt_opt, Adam
 from torch.nn import BCEWithLogitsLoss, utils, Module
 from torch.cuda import is_available
@@ -50,11 +51,13 @@ def _sed_epoch(model: Module,
     epoch_objective_values: Tensor = zeros(len(data_loader)).float()
     values_true, values_hat = [], []
 
+    #TODO use more sophisticated padding
     for e, data in enumerate(data_loader):
         if optimizer is not None:
             optimizer.zero_grad()
 
-        x, y = [i.to(device) for i in data]
+        x = data[0].to(device)
+        y = data[1].to(device)
 
         y_hat: Tensor = model(x)
 
@@ -70,11 +73,11 @@ def _sed_epoch(model: Module,
             loss: float = loss.item()
 
         epoch_objective_values[e] = loss
-        values_true.append(y.cpu())
+        values_true.append(data[1])
         values_hat.append(y_hat.cpu())
 
-    values_true = cat(values_true, dim=0)
-    values_hat = cat(values_hat, dim=0)
+    values_true = pad_sequence(values_true).permute(1, 0, 2)
+    values_hat = pad_sequence(values_hat).permute(1, 0, 2)
 
     return model, epoch_objective_values, values_true, values_hat
 
