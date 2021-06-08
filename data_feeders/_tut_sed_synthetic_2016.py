@@ -3,6 +3,7 @@
 
 #%%
 import numpy as np
+import torch
 from pathlib import Path
 from typing import Tuple
 
@@ -44,15 +45,15 @@ class TUTSEDSynthetic2016(Dataset):
 
         data = file_io.load_numpy_object(x_path)
         for d in data:
-            d = d.astype(np.float32)
+            d = torch.tensor(d, dtype=torch.float32)
 
         labels = file_io.load_numpy_object(y_path)
         for l in labels:
-            l = l.astype(np.float32)
+            l = torch.tensor(l, dtype=torch.float32)
 
 
-        self.x: ndarray = data
-        self.y: ndarray = labels
+        self.x = data
+        self.y = labels
 
     def __len__(self) \
             -> int:
@@ -65,13 +66,13 @@ class TUTSEDSynthetic2016(Dataset):
 
     def __getitem__(self,
                     item: int) \
-            -> Tuple[ndarray, ndarray]:
+            -> Tuple[torch.Tensor, torch.Tensor]:
         """Gets an example from the dataset.
 
         :param item: Index of the example.
         :type item: int
         :return: Example from the dataset, input and target values.
-        :rtype: (numpy.ndarray, numpy.ndarray)
+        :rtype: (torch.tensor, torch.tensor)
         """
         return self.x[item], self.y[item]
 
