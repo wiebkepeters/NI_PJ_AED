@@ -44,13 +44,10 @@ class TUTSEDSynthetic2016(Dataset):
         y_path = data_path.joinpath(target_values_input_name)
 
         data = file_io.load_numpy_object(x_path)
-        for d in data:
-            d = torch.tensor(d, dtype=torch.float32)
+        data = [torch.tensor(d, dtype=torch.float32) for d in data]
 
         labels = file_io.load_numpy_object(y_path)
-        for l in labels:
-            l = torch.tensor(l, dtype=torch.float32)
-
+        labels = [torch.tensor(l, dtype=torch.float32) for l in labels]
 
         self.x = data
         self.y = labels
