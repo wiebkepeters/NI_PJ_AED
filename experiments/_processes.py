@@ -7,7 +7,7 @@ from time import time
 from copy import deepcopy
 
 from torch import no_grad, cat, zeros, Tensor
-from torch.nn.utils.rnn import pad_sequence
+from torch.nn.utils.rnn import pack_padded_sequence, pad_sequence
 from torch.optim import optimizer as pt_opt, Adam
 from torch.nn import BCEWithLogitsLoss, utils, Module
 from torch.cuda import is_available
@@ -57,10 +57,11 @@ def _sed_epoch(model: Module,
         if optimizer is not None:
             optimizer.zero_grad()
 
-        x = data[0].to(device)
-        y = data[1].to(device)
+        lengths = data[-1]
+        packed_x = pack_padded_sequence(data[0].to(device), lengths=lengths, batch_first=True, enforce_sorted=True)
+        packed_y = pack_padded_sequence(data[1].to(device), lengths=lengths, batch_first=True, enforce_sorted=True)
 
-        y_hat: Tensor = model(x)
+        y_hat: Tensor = model(packed_x.data)
 
         loss = 0.
 

@@ -1,8 +1,11 @@
+# %%
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from torch import zeros, Tensor
+import torch
 from torch.nn import Module, GRUCell, Linear
+from torch.nn.utils.rnn import PackedSequence, pack_padded_sequence
 
 from ._modules import DNN
 
@@ -53,7 +56,7 @@ class CRNN(Module):
             bias=True)
 
     def forward(self,
-                x: Tensor) \
+                packed_input: Tensor) \
             -> Tensor:
         """Forward pass of the CRNN model.
 
@@ -62,24 +65,39 @@ class CRNN(Module):
         :return: Output predictions.
         :rtype: torch.Tensor
         """
-        b_size, t_steps, _ = x.size()
+        # b_size, t_steps, _ = packed_input.data.size()
 
-        feats: Tensor = self.dnn(x).permute(
-            0, 2, 1, 3
-        ).reshape(b_size, t_steps, -1)
+        packed_feats_data: Tensor = self.dnn(packed_input.data)#.permute(
+            # 0, 2, 1, 3
+        # ).reshape(b_size, t_steps, -1)
 
-        h: Tensor = zeros(
-            b_size, self.rnn_hh_size
-        ).to(x.device)
+        print(packed_feats_data)
 
-        outputs: Tensor = zeros(
-            b_size, t_steps, self.nb_classes
-        ).to(feats.device)
+        packed_states = PackedSequence(
+            packed_feats_data,
+            packed_input.batch_sizes,
+            packed_input.sorted_indices,
+            packed_input.unsorted_indices)
 
-        for i, t_step in enumerate(feats.permute(1, 0, 2)):
-            h: Tensor = self.rnn(t_step, h)
-            outputs[:, i, :] = self.classifier(h)
+        print(packed_states.data[0].shape)
 
-        return outputs
+
+        # h: Tensor = zeros(
+        #     b_size, self.rnn_hh_size
+        # ).to(packed_input.device)
+
+        # packed_outputs: Tensor = zeros(
+        #     b_size, t_steps, self.nb_classes
+        # ).to(packed_input.device)
+
+        # for i, t_step in enumerate(packed_states.data.permute(1, 0, 2)):
+        #     h: Tensor = self.rnn(t_step, h)
+        #     packed_outputs[:, i, :] = self.classifier(h)
+
+        # outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(packed_outputs, batch_first=True)
+
+        # return outputs
 
 # EOF
+
+# %%
