@@ -17,16 +17,22 @@ __all__ = ['get_tut_sed_data_loader']
 def custom_collate_fn(batch):
 
     data = []
-    target = []
+    labels = []
+    lengths = []
 
     for item in batch:
-        target.append(torch.as_tensor(item[1], dtype=torch.float32))
-        data.append(torch.as_tensor(item[0], dtype=torch.float32))
+        data.append(item[0])
+        labels.append(item[1])
+        lengths.append(item[0].shape[0])
 
-    target = pad_sequence(target).permute(1, 0, 2)
-    data = pad_sequence(data).permute(1, 0, 2)
+    data = sorted(data, key=lambda d:d.shape[0], reverse=True)
+    labels = sorted(labels, key=lambda l:l.shape[0], reverse=True)
+    lengths = sorted(lengths, reverse=True)
 
-    return [data, target]
+    data = pad_sequence(data, batch_first=True)
+    labels = pad_sequence(labels, batch_first=True)
+
+    return [data, labels, lengths]
 
 
 def get_tut_sed_data_loader(root_dir: str,
@@ -50,7 +56,7 @@ def get_tut_sed_data_loader(root_dir: str,
     :type shuffle: bool
     :param drop_last: Drop last examples?
     :type drop_last: bool
-    :param input_features_file_name: Input features file name.
+    :param input_features_file_name: Input features file nsame.
     :type input_features_file_name: str
     :param target_values_input_name: Target values file name.
     :type target_values_input_name: str

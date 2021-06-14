@@ -59,7 +59,7 @@ class TUTSEDSynthetic2016(Dataset):
         :return: Amount of examples.
         :rtype: int
         """
-        return self.x.shape[0]
+        return len(self.x)
 
     def __getitem__(self,
                     item: int) \
