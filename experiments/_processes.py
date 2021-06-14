@@ -57,11 +57,48 @@ def _sed_epoch(model: Module,
         if optimizer is not None:
             optimizer.zero_grad()
 
-        lengths = data[-1]
+        seq_length = data[-1] # divide batch into chunks and then furhter into bits of size seq_length
+        lengths = data[-2] # contains lengths of each batch element in descended order
+        shortes_length = data[-3] # equal to lengths[-1]
+
         packed_x = pack_padded_sequence(data[0].to(device), lengths=lengths, batch_first=True, enforce_sorted=True)
         packed_y = pack_padded_sequence(data[1].to(device), lengths=lengths, batch_first=True, enforce_sorted=True)
 
-        y_hat: Tensor = model(packed_x.data)
+
+        # y_hat: Tensor = model(packed_x)
+        y_hat: Tensor = torch.zeros_like(data[0].shape)
+
+
+        # while data[0].shape[1] - idx * seq_length > 0:
+        for idx, l in enumerate(lengths[::-1]):
+            counter = 0
+            start = 0
+            stop = 0
+
+            if idx > 0:
+                while l - seq_length * counter > 0:
+                    start = lengths[-idx] + counter * seq_length
+                    stop = start + seq_length
+                    pad_lengths = []
+                    for len in lengths:
+                        if len >= l:
+                            pad_lengths.append(l)
+                        else:
+                            pad_lengths.append()
+
+                    packed_x = pack_padded_sequence(data[0][:, start:stop, :], lengths=pad_lengths, batch_first=True)
+                    # packed_y = pack_padded_sequence(data[1][:, start:stop, :], lengths=pad_lengths, batch_first=True)
+
+                    y_hat[:, start:stop, :] += model(packed_x[:, start:stop, :], packed=True)
+                    counter += 1
+
+            else:
+                while l - seq_length * counter > 0:
+                    start = seq_length * counter
+                    stop = start+seq_length
+                    y_hat[:, start:stop, :] += model(data[0][:, start:stop, :], packed=False) #TODO modify model if other than CRNN is used
+                    counter += 1
+
 
         loss = 0.
 

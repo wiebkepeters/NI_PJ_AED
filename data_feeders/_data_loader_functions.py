@@ -16,23 +16,36 @@ __all__ = ['get_tut_sed_data_loader']
 
 def custom_collate_fn(batch):
 
+    seq_length = 256
     data = []
     labels = []
     lengths = []
 
+    shortes_length = float('inf')
+
     for item in batch:
-        data.append(item[0])
-        labels.append(item[1])
-        lengths.append(item[0].shape[0])
+        d, l = preprocess(item[0], item[1], seq_length)
+        data.append(d)
+        labels.append(l)
+        lengths.append(d.shape[0])
+
+        if l < shortes_length:
+            shortes_length = l
 
     data = sorted(data, key=lambda d:d.shape[0], reverse=True)
     labels = sorted(labels, key=lambda l:l.shape[0], reverse=True)
     lengths = sorted(lengths, reverse=True)
+    # lengths = [l - shortes_length for l in lengths]
 
     data = pad_sequence(data, batch_first=True)
     labels = pad_sequence(labels, batch_first=True)
 
-    return [data, labels, lengths]
+    return [data, labels, lengths, seq_length, shortes_length]
+
+
+def preprocess(data, labels, seq_length):
+    return data[:-(len(data) % seq_length), :], labels[:-(len(labels) % seq_length)]
+
 
 
 def get_tut_sed_data_loader(root_dir: str,

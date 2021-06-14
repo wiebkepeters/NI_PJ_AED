@@ -56,7 +56,7 @@ class CRNN(Module):
             bias=True)
 
     def forward(self,
-                packed_input: Tensor) \
+                packed_input: Tensor, packed:bool) \
             -> Tensor:
         """Forward pass of the CRNN model.
 
@@ -71,7 +71,6 @@ class CRNN(Module):
             # 0, 2, 1, 3
         # ).reshape(b_size, t_steps, -1)
 
-        print(packed_feats_data)
 
         packed_states = PackedSequence(
             packed_feats_data,
