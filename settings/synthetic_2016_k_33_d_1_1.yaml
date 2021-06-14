@@ -8,7 +8,7 @@
 #
 # Settings for the data loading
 data_loader:
-  batch_size: 16
+  batch_size: 1
   shuffle: Yes
   drop_last: Yes
   root_dir: 'data'
@@ -21,16 +21,16 @@ optimizer:
 #
 # Settings for the training process
 training:
-  epochs: 300
+  epochs: 100
   validation_patience: 30
   grad_norm: -1
 #
 # Settings for the SED models
 baseline: &crnn_settings
-  cnn_channels: &cnn_channels_out 256
+  cnn_channels: &cnn_channels_out 128
   cnn_dropout: .25
   rnn_in_dim: *cnn_channels_out
-  rnn_out_dim: 256
+  rnn_out_dim: 128
   nb_classes: 16
 baseline_dilated: &dilated_settings
   cnn_channels: 256
