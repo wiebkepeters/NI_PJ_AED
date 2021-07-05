@@ -78,6 +78,7 @@ def _sed_epoch(model: Module,
         nb_batch, _, nb_classes = data[1].shape
         y_hat = torch.zeros(nb_batch, nb_seq, nb_classes).to(device)
         y = torch.zeros_like(y_hat)
+        check_class = torch.ones(nb_batch, nb_classes)
 
         # y_hat: Tensor = torch.zeros_like(data[1]).to(device) # B x T x classes
         # y = data[1].sum(dim=1).div(nb_classes).to(device)
@@ -88,7 +89,7 @@ def _sed_epoch(model: Module,
             stop = start+seq_length
             pred = model(data[0][:, start:stop, :].to(device)) #TODO modify model if other than CRNN is used
             if type(pred) == tuple:
-                y[:, counter, :] = data[1][:, start:stop, :].sum(dim=1).div(seq_length)
+                y[:, counter, :] = data[1][:, start:stop, :].sum(dim=1) >= check_class
                 y_hat[:, counter, :] += pred[0]
             else:
                 #TODO fix (for) baseline model crnn
@@ -131,7 +132,6 @@ def _sed_epoch(model: Module,
 
 
         loss = 0.
-
         if objective is not None:
             loss: Tensor = objective(y_hat, y.to(device))
             if optimizer is not None:
