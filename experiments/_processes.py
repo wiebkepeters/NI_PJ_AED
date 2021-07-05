@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from models._modules import attention
 import torch
 from typing import Callable, Optional, Tuple, \
-    Union, MutableMapping
+    Union, MutableMapping, no_type_check
 from time import time
 from copy import deepcopy
 
@@ -53,28 +54,50 @@ def _sed_epoch(model: Module,
     # values_true, values_hat = [], []
 
     #TODO use more sophisticated padding
+    # alpha = []
+    # beta = []
+
     for e, data in enumerate(data_loader):
+        # alpha_e = []
+        # beta_e = []
         if optimizer is not None:
             optimizer.zero_grad()
 
-        seq_length = data[-1] # divide batch into chunks and then furhter into bits of size seq_length
-        lengths = data[-2] # contains lengths of each batch element in descended order
-        # shortes_length = data[-3] # equal to lengths[-1]
+        seq_length = data[-2] # divide batch into chunks and then furhter into bits of size seq_length
+        nb_frames = data[2] # contains total lengths (number of frames) of each batch element in descended order
+        # shortes_length = data[-1] # equal to lengths[-1]
 
         # packed_x = pack_padded_sequence(data[0].to(device), lengths=lengths, batch_first=True, enforce_sorted=True)
         # packed_y = pack_padded_sequence(data[1].to(device), lengths=lengths, batch_first=True, enforce_sorted=True)
 
 
         # y_hat: Tensor = model(packed_x)
-        y_hat: Tensor = torch.zeros_like(data[0])
+        # nb_frames = data[1].shape[1] # number of frames in total
+
+        nb_seq = nb_frames[0] // seq_length
+        nb_batch, _, nb_classes = data[1].shape
+        y_hat = torch.zeros(nb_batch, nb_seq, nb_classes).to(device)
+        y = torch.zeros_like(y_hat)
+
+        # y_hat: Tensor = torch.zeros_like(data[1]).to(device) # B x T x classes
+        # y = data[1].sum(dim=1).div(nb_classes).to(device)
 
         counter = 0
-        while lengths[0] - counter * seq_length > 0:
+        while nb_frames[0] - counter * seq_length > 0:
             start = seq_length * counter
             stop = start+seq_length
-            y_hat[:, start:stop, :] += model(data[0][:, start:stop, :]) #TODO modify model if other than CRNN is used
+            pred = model(data[0][:, start:stop, :].to(device)) #TODO modify model if other than CRNN is used
+            if type(pred) == tuple:
+                y[:, counter, :] = data[1][:, start:stop, :].sum(dim=1).div(seq_length)
+                y_hat[:, counter, :] += pred[0]
+            else:
+                #TODO fix (for) baseline model crnn
+                y_hat[:, counter, :] += pred
+
             counter += 1
 
+        # alpha.append(alpha_e)
+        # beta.append(beta_e)
 
         # while data[0].shape[1] - idx * seq_length > 0:
         # for idx, l in enumerate(lengths[::-1]):
@@ -110,7 +133,7 @@ def _sed_epoch(model: Module,
         loss = 0.
 
         if objective is not None:
-            loss: Tensor = objective(y_hat, data[1])
+            loss: Tensor = objective(y_hat, y.to(device))
             if optimizer is not None:
                 loss.backward()
                 if grad_norm > 0:
@@ -119,6 +142,7 @@ def _sed_epoch(model: Module,
             loss: float = loss.item()
 
         epoch_objective_values[e] = loss
+
 
         # length_values.append(data[0].shape[1]) # B x T x H; varying T
         # values_true.append(data[1])
@@ -136,7 +160,7 @@ def _sed_epoch(model: Module,
 
 
     # return model, epoch_objective_values, torch.cat(values_true), torch.cat(values_hat)
-    return model, epoch_objective_values, None, None
+    return model, epoch_objective_values, None, None#, (alpha, beta)
 
 def testing(model: Module,
             data_loader: DataLoader,
@@ -344,6 +368,8 @@ def experiment(settings: MutableMapping,
         nb_parameters(model.dilated_cnn, 'Dilated CNN')
     if hasattr(model, 'rnn'):
         nb_parameters(model.rnn, 'RNN')
+    if hasattr(model, 'attention'):
+        nb_parameters(model.attention, 'ATTENTION')
     nb_parameters(model.classifier, 'Classifier')
     nb_parameters(model)
 
