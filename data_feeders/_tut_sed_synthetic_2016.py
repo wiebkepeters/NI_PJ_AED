@@ -40,17 +40,21 @@ class TUTSEDSynthetic2016(Dataset):
         super(TUTSEDSynthetic2016, self).__init__()
         data_path = Path(root_dir, 'synthetic', split)
 
+        nb_frames = 1500 # 1500 frames * 0,04 sec / 60 sec * 0.5 overlap = 30
         x_path = data_path.joinpath(input_features_file_name)
         y_path = data_path.joinpath(target_values_input_name)
 
         data = file_io.load_numpy_object(x_path)
-        data = [torch.tensor(d, dtype=torch.float32) for d in data]
+        data = [torch.tensor(d[:nb_frames, :], dtype=torch.float32) for d in data]
 
         labels = file_io.load_numpy_object(y_path)
-        labels = [torch.tensor(l, dtype=torch.float32) for l in labels]
+        labels = [torch.tensor(l[:nb_frames, :], dtype=torch.float32) for l in labels]
 
         self.x = data
         self.y = labels
+
+
+
 
     def __len__(self) \
             -> int:

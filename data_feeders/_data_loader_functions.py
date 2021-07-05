@@ -27,10 +27,11 @@ def custom_collate_fn(batch):
         d, l = preprocess(item[0], item[1], seq_length)
         data.append(d)
         labels.append(l)
-        lengths.append(d.shape[0])
+        s = d.shape[0]
+        lengths.append(s)
 
-        if l < shortes_length:
-            shortes_length = l
+        if s < shortes_length:
+            shortes_length = s
 
     data = sorted(data, key=lambda d:d.shape[0], reverse=True)
     labels = sorted(labels, key=lambda l:l.shape[0], reverse=True)
@@ -44,6 +45,7 @@ def custom_collate_fn(batch):
 
 
 def preprocess(data, labels, seq_length):
+
     return data[:-(len(data) % seq_length), :], labels[:-(len(labels) % seq_length)]
 
 
@@ -92,4 +94,4 @@ def get_tut_sed_data_loader(root_dir: str,
 
 # EOF
 
-# %%
+
