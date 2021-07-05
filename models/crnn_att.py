@@ -2,19 +2,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from torch import zeros, Tensor
 import torch
+from torch import nn
+from torch import Tensor
 from torch.nn import Module, GRUCell, Linear
 from torch.nn.utils.rnn import PackedSequence, pack_padded_sequence
 
 from ._modules import DNN
+from ._modules import attention
 
-__author__ = 'Konstantinos Drossos -- Tampere University'
-__docformat__ = 'reStructuredText'
-__all__ = ['CRNN']
+__all__ = ['CRNN_ATT']
 
 
-class CRNN(Module):
+class CRNN_ATT(Module):
 
     def __init__(self,
                  cnn_channels: int,
@@ -38,6 +38,7 @@ class CRNN(Module):
         """
         super().__init__()
 
+        self.rnn_in_dim: int = rnn_in_dim
         self.rnn_hh_size: int = rnn_out_dim
         self.nb_classes: int = nb_classes
 
@@ -50,10 +51,14 @@ class CRNN(Module):
             hidden_size=self.rnn_hh_size,
             bias=True)
 
-        self.classifier: Module = Linear(
-            in_features=self.rnn_hh_size,
-            out_features=self.nb_classes,
-            bias=True)
+        self.attention: Module = attention.ATTENTION(
+                    dim_cnn=self.rnn_in_dim,
+                    dim_rnn=self.rnn_hh_size,
+                    nb_classes=self.nb_classes
+                )
+
+        self.classifier: Module = nn.Linear(rnn_in_dim+rnn_out_dim, nb_classes)
+        self.classifier2 : Module = nn.Linear(1, nb_classes)
 
     def forward(self,
                     x: Tensor) \
@@ -71,19 +76,29 @@ class CRNN(Module):
                 0, 2, 1, 3
             ).reshape(b_size, t_steps, -1)
 
-            h: Tensor = zeros(
+            h: Tensor = torch.zeros(
                 b_size, self.rnn_hh_size
             ).to(x.device)
 
-            outputs: Tensor = zeros(
-                b_size, t_steps, self.nb_classes
-            ).to(feats.device)
+            h_head: Tensor = torch.zeros(
+                b_size, self.rnn_hh_size
+            ).to(x.device)
 
-            for i, t_step in enumerate(feats.permute(1, 0, 2)):
-                h[:, :] = self.rnn(t_step, h)
-                outputs[:, i, :] = self.classifier(h)
+            for t_step in feats.permute(1, 0, 2):
+                h = self.rnn(t_step, h)
+                h_head += h
 
-            return outputs
+            h_head_mean = h_head / t_steps # mean rnn output
+            h_head_mean = h_head_mean.unsqueeze(1).expand(-1, t_steps,-1)
+
+
+            # f_bar, alpha, beta = self.attention(feats, h_head_mean)
+            # outputs = self.classifier2(beta)
+
+            a_T, alpha, beta = self.attention(feats, h_head_mean)
+            outputs = torch.sigmoid(self.classifier(a_T))
+
+            return outputs, alpha, beta
 
 # EOF
 

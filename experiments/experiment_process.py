@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# from models.crnn_att import CRNN_ATT
 from typing import Optional, Union, MutableMapping
 from pathlib import Path
 
 from tools.file_io import load_settings_file
 from tools.printing import cmd_msg, date_and_time
 from tools.various import get_argument_parser, CheckAllNone
-from models import CRNN, DESSED, DESSEDDilated, BaselineDilated
+from models import CRNN, CRNN_ATT, DESSED, DESSEDDilated, BaselineDilated
 from ._processes import experiment
 
 __author__ = 'Konstantinos Drossos'
@@ -35,6 +36,9 @@ def do_process(settings_path: Optional[Union[Path, None]] = None,
     if model_to_use == 'baseline':
         msg = 'Baseline experiment'
         model = CRNN
+    elif model_to_use == 'crnn_att':
+        msg = 'CRNN_ATT experiment'
+        model = CRNN_ATT
     elif model_to_use == 'baseline_dilated':
         msg = 'Baseline with dilated convolutions experiment'
         model = BaselineDilated

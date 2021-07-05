@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from .crnn import CRNN
+from .crnn_att import CRNN_ATT
 from .baseline_dilated import BaselineDilated
 from .dessed import DESSED
 from .dessed_dilated import DESSEDDilated
