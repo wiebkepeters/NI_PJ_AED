@@ -17,7 +17,7 @@ data_loader:
 #
 # Settings for the optimizer
 optimizer:
-  lr: !!float 1e-3
+  lr: !!float 1e-4
 #
 # Settings for the training process
 training:
