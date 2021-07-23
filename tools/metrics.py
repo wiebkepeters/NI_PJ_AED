@@ -4,6 +4,7 @@
 from typing import Tuple, Union
 
 import torch
+import numpy as np
 
 __author__ = 'Konstantinos Drossos -- Tampere University'
 __docformat__ = 'reStructuredText'
@@ -11,6 +12,75 @@ __all__ = ['f1_per_frame', 'error_rate_per_frame']
 
 
 _eps: float = torch.finfo(torch.float32).eps
+
+def balanced_accuracy(y_hat: torch.Tensor, y:torch.Tensor) \
+        -> torch.Tensor:
+
+    """Uses 3d (B x #Sequences x Classes) indices of ground truth pos and neg
+    as keys for a hash map via "raveling".
+    Prediction accuracies are "thresholded" and become 0/1. Predictions indices
+    are looked up in hash map to check for true positive, true negative, false postive
+    false negative. Should scale better than N^2
+    """
+
+    threshhold = 0.55
+    # o = torch.ones_like(y)
+    # z = torch.zeros_like(y)
+
+    pos = torch.nonzero(y).cpu() # B x S x nclass
+    neg = torch.nonzero(torch.where(y == 1, 0, 1)).cpu()
+
+    cols = [pos[:, c].numpy() for c in range(pos.shape[-1])]
+    pos_ravel = np.ravel_multi_index(tuple(cols), dims=tuple(y.size()))
+    pos_dict = dict.fromkeys(pos_ravel)
+
+    cols = [neg[:, c].numpy() for c in range(neg.shape[-1])]
+    neg_ravel = np.ravel_multi_index(tuple(cols), dims=tuple(y.size()))
+    neg_dict = dict.fromkeys(neg_ravel)
+
+    pred = torch.where(y_hat > threshhold, 1, 0).cpu()
+    pred_pos = torch.nonzero(pred).cpu()
+    cols = [pred_pos[:, c].numpy() for c in range(pred_pos.shape[-1])]
+    pred_pos_ravel = np.ravel_multi_index(tuple(cols), dims=tuple(y.size()))
+
+    pred_neg = torch.nonzero(torch.where(pred == 1, 0, 1)).cpu()
+    cols = [pred_neg[:, c].numpy() for c in range(pred_neg.shape[-1])]
+    pred_neg_ravel = np.ravel_multi_index(tuple(cols), dims=tuple(y.size()))
+
+    true_pos = 0
+    false_pos = 0
+    for ind in pred_pos_ravel:
+        if ind in pos_dict.keys():
+            true_pos+=1
+        else:
+            false_pos+=1
+
+
+    true_neg = 0
+    false_neg = 0
+    for ind in pred_neg_ravel:
+        if ind in neg_dict.keys():
+            true_neg+=1
+        else:
+            false_neg+=1
+
+
+    sensitivity = true_pos / (true_pos+false_neg+1e-5)
+    specificity = true_neg / (false_pos+true_neg+1e-5)
+
+    bac = .5 * (sensitivity + specificity)
+
+    # print(true_pos, true_neg, false_pos, false_neg)
+    return bac
+
+
+def accuracy(y_hat: torch.Tensor, y: torch.Tensor) \
+        -> torch.Tensor:
+
+    return torch.eq(y, y_hat.round()).sum() / torch.numel(y)
+
+
+
 
 
 def f1_per_frame(y_hat: torch.Tensor,

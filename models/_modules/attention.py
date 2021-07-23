@@ -43,10 +43,9 @@ class ATTENTION(nn.Module):
         alpha_gat_T = torch.sigmoid(self.U(torch.tanh(self.Wgat1(c_T)))) # B x T x 1
 
         z_T = alpha_gat_T * feats # B x T x dim_cnn
-
         beta_lat_T = torch.sigmoid(self.V(self.W3(z_T))) # B x T x 1
         f_T = beta_lat_T * z_T # B x T x dim_cnn
-        f_bar = f_T.mean(dim=1)# B x dim_cnn(-1, feats.shape[1], -1) # B x T x dim_cnn
+        f_bar = f_T.mean(dim=1)# B x dim_cnn # (-1, feats.shape[1], -1) # B x T x dim_cnn
 
         # a_T = torch.cat((f_bar, self.Wglobal(h_head)), dim=-1) # B x T x (dim_cnn+dim_rnn)
         a_T = torch.cat((f_bar, self.Wglobal(h_head[:, 0, :])), dim=-1) # B x (dim_cnn+dim_rnn)

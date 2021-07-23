@@ -14,7 +14,7 @@ from torch.nn import BCEWithLogitsLoss, utils, Module
 from torch.cuda import is_available
 from torch.utils.data import DataLoader
 
-from tools.metrics import f1_per_frame, error_rate_per_frame
+from tools.metrics import accuracy, f1_per_frame, error_rate_per_frame, balanced_accuracy
 from tools.printing import results_evaluation, results_training, \
     nb_examples, cmd_msg, nb_parameters, device_info, InformAboutProcess
 from data_feeders import get_tut_sed_data_loader
@@ -56,6 +56,8 @@ def _sed_epoch(model: Module,
     #TODO use more sophisticated padding
     # alpha = []
     # beta = []
+    bac_list = []
+    acc_list = []
 
     for e, data in enumerate(data_loader):
         # alpha_e = []
@@ -77,7 +79,7 @@ def _sed_epoch(model: Module,
         nb_seq = nb_frames[0] // seq_length
         nb_batch, _, nb_classes = data[1].shape
         y_hat = torch.zeros(nb_batch, nb_seq, nb_classes).to(device)
-        y = torch.zeros_like(y_hat)
+        y = torch.zeros_like(y_hat).to(device)
         check_class = torch.ones(nb_batch, nb_classes)
 
         # y_hat: Tensor = torch.zeros_like(data[1]).to(device) # B x T x classes
@@ -94,46 +96,16 @@ def _sed_epoch(model: Module,
             else:
                 #TODO fix (for) baseline model crnn
                 y_hat[:, counter, :] += pred
-
             counter += 1
 
-        # alpha.append(alpha_e)
-        # beta.append(beta_e)
-
-        # while data[0].shape[1] - idx * seq_length > 0:
-        # for idx, l in enumerate(lengths[::-1]):
-        #     counter = 0
-        #     start = 0
-        #     stop = 0
-
-        #     if idx > 0:
-        #         while l - seq_length * counter > 0:
-        #             start = lengths[-idx] + counter * seq_length
-        #             stop = start + seq_length
-        #             pad_lengths = []
-        #             for len in lengths:
-        #                 if len >= l:
-        #                     pad_lengths.append(l)
-        #                 else:
-        #                     pad_lengths.append()
-
-        #             packed_x = pack_padded_sequence(data[0][:, start:stop, :], lengths=pad_lengths, batch_first=True)
-        #             # packed_y = pack_padded_sequence(data[1][:, start:stop, :], lengths=pad_lengths, batch_first=True)
-
-        #             y_hat[:, start:stop, :] += model(packed_x[:, start:stop, :], packed=True)
-        #             counter += 1
-
-        #     else:
-        #         while l - seq_length * counter > 0:
-        #             start = seq_length * counter
-        #             stop = start+seq_length
-        #             y_hat[:, start:stop, :] += model(data[0][:, start:stop, :], packed=False) #TODO modify model if other than CRNN is used
-        #             counter += 1
-
+        y_hat_sig = torch.sigmoid(y_hat)
+        bac = balanced_accuracy(y_hat_sig, y)
+        bac_list.append(bac)
+        acc_list.append(accuracy(y_hat_sig, y))
 
         loss = 0.
         if objective is not None:
-            loss: Tensor = objective(y_hat, y.to(device))
+            loss: Tensor = objective(y_hat, y)
             if optimizer is not None:
                 loss.backward()
                 if grad_norm > 0:
@@ -144,23 +116,8 @@ def _sed_epoch(model: Module,
         epoch_objective_values[e] = loss
 
 
-        # length_values.append(data[0].shape[1]) # B x T x H; varying T
-        # values_true.append(data[1])
-        # values_hat.append(y_hat.cpu())
 
-    # pad_val = max(length_values)
-    # batch_size, _, num_mel = next(iter(data_loader))[1].shape
-
-    # zs = torch.zeros(batch_size, 1, num_mel)
-
-    # for i, _ in enumerate(length_values):
-    #     pad_times = pad_val - values_true[i].shape[1]
-    #     values_true[i] = torch.cat((values_true[i], zs.expand(-1, pad_times, -1)), dim=1)
-    #     values_hat[i] = torch.cat((values_hat[i], zs.expand(-1, pad_times, -1)), dim=1)
-
-
-    # return model, epoch_objective_values, torch.cat(values_true), torch.cat(values_hat)
-    return model, epoch_objective_values, None, None#, (alpha, beta)
+    return model, epoch_objective_values, torch.Tensor(bac_list).mean(), torch.Tensor(acc_list).mean() #, (alpha, beta)
 
 def testing(model: Module,
             data_loader: DataLoader,
@@ -184,7 +141,7 @@ def testing(model: Module,
     start_time = time()
     model.eval()
     with no_grad():
-        _, _, true_values, hat_values = _sed_epoch(
+        _, _, bac, hat_values = _sed_epoch(
             model=model,
             data_loader=data_loader,
             objective=None,
@@ -197,7 +154,7 @@ def testing(model: Module,
     # er_score = er_func(hat_values, true_values).mean()
 
     # results_evaluation(f1_score, er_score, end_time)
-    results_evaluation(0.99, 0.99, end_time)
+    results_evaluation(bac, 0.99, end_time)
 
 def training(model:Module,
              data_loader_training: DataLoader,
@@ -250,7 +207,7 @@ def training(model:Module,
         start_time = time()
 
         model = model.train()
-        model, epoch_tr_loss, true_training, hat_training = _sed_epoch(
+        model, epoch_tr_loss, epoch_tr_bac, epoch_tr_acc = _sed_epoch(
             model=model,
             data_loader=data_loader_training,
             objective=objective,
@@ -270,7 +227,7 @@ def training(model:Module,
 
         model = model.eval()
         with no_grad():
-            model, epoch_va_loss, true_validation, hat_validation = _sed_epoch(
+            model, epoch_va_loss, epoch_va_bac, epoch_va_acc = _sed_epoch(
                 model=model,
                 data_loader=data_loader_validation,
                 objective=objective,
@@ -301,10 +258,10 @@ def training(model:Module,
             epoch=epoch,
             training_loss=epoch_tr_loss,
             validation_loss=epoch_va_loss,
-            training_f1=0.99, # f1_score_training,
-            training_er=0.99, #error_rate_training,
-            validation_f1=0.99, #f1_score_validation,
-            validation_er=0.99, #error_rate_validation,
+            training_f1=epoch_tr_bac, # f1_score_training,
+            training_er=epoch_tr_acc, #error_rate_training,
+            validation_f1=epoch_va_bac, #f1_score_validation,
+            validation_er=epoch_va_acc, #error_rate_validation,
             time_elapsed=end_time)
 
         if epochs_waiting >= validation_patience:
@@ -404,5 +361,7 @@ def experiment(settings: MutableMapping,
             **common_kwargs)
 
     cmd_msg('That\'s all!', start='\n\n-- ', end='\n\n')
+
+    return optimized_model
 
 # EOF

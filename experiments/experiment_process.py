@@ -58,10 +58,11 @@ def do_process(settings_path: Optional[Union[Path, None]] = None,
     model_settings = settings[model_to_use]
 
     cmd_msg('Starting experiment', end='\n\n')
-    experiment(settings=settings,
+    model = experiment(settings=settings,
                model_settings=model_settings,
                model_class=model)
 
+    return model
 
 def main() \
         -> None:
