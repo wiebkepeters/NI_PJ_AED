@@ -3,6 +3,7 @@
 # -*- coding: utf-8 -*-
 import torch
 from typing import Dict
+# from torch._C import dtype, float32, int32
 
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
@@ -33,10 +34,10 @@ def custom_collate_fn(batch):
         if s < shortes_length:
             shortes_length = s
 
-    data = sorted(data, key=lambda d:d.shape[0], reverse=True)
-    labels = sorted(labels, key=lambda l:l.shape[0], reverse=True)
-    lengths = sorted(lengths, reverse=True)
-    # lengths = [l - shortes_length for l in lengths]
+    # data = sorted(data, key=lambda d:d.shape[0], reverse=True)
+    # labels = sorted(labels, key=lambda l:l.shape[0], reverse=True)
+    # lengths = sorted(lengths, reverse=True)
+    # # lengths = [l - shortes_length for l in lengths]
 
     data = pad_sequence(data, batch_first=True)
     labels = pad_sequence(labels, batch_first=True)
@@ -45,7 +46,6 @@ def custom_collate_fn(batch):
 
 
 def preprocess(data, labels, seq_length):
-
     return data[:-(len(data) % seq_length), :], labels[:-(len(labels) % seq_length)]
 
 

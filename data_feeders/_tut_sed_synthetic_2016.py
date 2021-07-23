@@ -40,7 +40,7 @@ class TUTSEDSynthetic2016(Dataset):
         super(TUTSEDSynthetic2016, self).__init__()
         data_path = Path(root_dir, 'synthetic', split)
 
-        nb_frames = 1500 # 1500 frames * 0,04 sec / 60 sec * 0.5 overlap = 30
+        nb_frames = 6000 # 1500 frames * 0,04 sec / 60 sec * 0.5 overlap = first 30 sec; 3000 frames = first 60 sec # 6000 = 120 sec
         x_path = data_path.joinpath(input_features_file_name)
         y_path = data_path.joinpath(target_values_input_name)
 
@@ -52,8 +52,6 @@ class TUTSEDSynthetic2016(Dataset):
 
         self.x = data
         self.y = labels
-
-
 
 
     def __len__(self) \
