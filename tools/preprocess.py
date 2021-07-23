@@ -43,16 +43,33 @@ def load_desc_file(_desc_file):
         name = words[0].split('/')[-1]
         if name not in _desc_dict:
             _desc_dict[name] = list()
-        _desc_dict[name].append([float(words[2]), float(words[3]), __class_labels[words[-1]]])
+        if words[-1] != 'm':
+            _desc_dict[name].append([float(words[2]), float(words[3]), __class_labels[words[-1].strip()]])
+        else:
+            _desc_dict[name].append([float(words[2]), float(words[3]), __class_labels[words[-2].strip()]])
     return _desc_dict
 
 
-def extract_mbe(_y, _sr, _nfft, _nb_mel):
-    # window = scipy.signal.get_window('hamming', Nx=1764) #, fftbins=False) <- symmetric window
-    spec, _ = librosa.core.spectrum._spectrogram(y=_y, n_fft=_nfft, hop_length=882, window="hamming", power=1)
-    mel_basis = librosa.filters.mel(sr=_sr, n_fft=_nfft, n_mels=_nb_mel, htk=True)
+# def extract_mbe(_y, _sr, _nfft, _nb_mel):
+#     # window = scipy.signal.get_window('hamming', Nx=1764) #, fftbins=False) <- symmetric window
+#     spec, _ = librosa.core.spectrum._spectrogram(y=_y, n_fft=_nfft, hop_length=512, window="hamming", power=1)
+#     mel_basis = librosa.filters.mel(sr=_sr, n_fft=_nfft, n_mels=_nb_mel, htk=True)
 
-    return np.log(np.dot(mel_basis, spec))
+#     return np.log(np.dot(mel_basis, spec))
+
+def extract_mbe_exp2(y):
+    sr = 44100
+    n_fft = 441
+    n_mels = 60
+    # window = "hamming"
+    # htk = True
+    # power = 1.0
+
+    # melspec = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=n_fft, window=window, power=power, n_mels=n_mels, htk=htk)
+    # return librosa.amplitude_to_db(melspec)
+
+    melspec = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=n_fft, n_mels=n_mels)
+    return np.log(melspec)
 
 def load_mbe(file):
     """Load log mel energies into numpy array. Log mel energies are contained in the ... dataset.
@@ -68,25 +85,75 @@ def load_mbe(file):
 # ###################################################################
 
 is_mono = True
+# %%
+
 #%%
+# __class_labels = {
+#     'alarms_and_sirens': 0,
+#     'baby_crying': 1,
+#     'bird_singing': 2,
+#     'bus': 3,
+#     'cat_meowing': 4,
+#     'crowd_applause': 5,
+#     'crowd_cheering': 6,
+#     'dog_barking': 7,
+#     'footsteps': 8,
+#     'glass_smash': 9,
+#     'gun_shot': 10,
+#     'horsewalk': 11,
+#     'mixer': 12,
+#     'motorcycle': 13,
+#     'rain': 14,
+#     'thunder': 15
+# }
+
 __class_labels = {
-    'alarms_and_sirens': 0,
-    'baby_crying': 1,
-    'bird_singing': 2,
-    'bus': 3,
-    'cat_meowing': 4,
-    'crowd_applause': 5,
-    'crowd_cheering': 6,
-    'dog_barking': 7,
-    'footsteps': 8,
-    'glass_smash': 9,
-    'gun_shot': 10,
-    'horsewalk': 11,
-    'mixer': 12,
-    'motorcycle': 13,
-    'rain': 14,
-    'thunder': 15
+    'bird singing': 0,
+    'car passing by': 1,
+    'children shouting': 2,
+    'cupboard': 3,
+    'cutlery': 4,
+    'dishes': 5,
+    'drawer': 6,
+    'glass jingling': 7,
+    '(object) banging': 8,
+    'object impact': 9,
+    '(object) rustling': 10,
+    '(object) snapping': 11,
+    'people speaking': 12,
+    'people walking': 13,
+    'washing dishes': 14,
+    'water tap running': 15,
+    'wind blowing': 16
 }
+
+def test():
+    hop_len = 441//4
+
+    # start = os.getcwd()
+    for dir in os.listdir():
+        os.chdir(dir)
+        start2 = os.getcwd()
+        for dir2 in os.listdir():
+            os.chdir(dir2)
+            desc_dict = load_desc_file("label.txt")
+            for f in os.listdir():
+                if f[-4:] == '.npy':
+                    mbe = np.load(f).T
+                    audio_file = f[:-3] + 'wav'
+                    label = np.zeros((mbe.shape[0], len(__class_labels)))
+                    tmp_data = np.array(desc_dict[audio_file])
+                    frame_start = np.floor(tmp_data[:, 0] * sr / hop_len).astype(int)
+                    frame_end = np.ceil(tmp_data[:, 1] * sr / hop_len).astype(int)
+                    se_class = tmp_data[:, 2].astype(int)
+                    for ind, val in enumerate(se_class):
+                        label[frame_start[ind]:frame_end[ind], val] = 1
+
+
+                    tmp_feat_file = os.path.join(feat_folder, '{}.npz'.format(audio_file[:-4]))
+                    np.savez(tmp_feat_file, mbe, label)
+            os.chdir(start2)
+        os.chdir(start)
 
 #%%
 # location of data.
@@ -95,13 +162,14 @@ evaluation_setup_folder = '/home/lukas/Documents/Studium/SoSe21/NIP/data/TUT-SED
 audio_folder = '/home/lukas/Documents/Studium/SoSe21/NIP/data/TUT-SED-synthetic-2016.features/TUT-SED-synthetic-2016/features'
 
 # Output
-feat_folder = './data'
+feat_folder = './datas'
 create_folder(feat_folder)
 
 # User set parameters
 nfft = 1024
 win_len = 1764
-hop_len = win_len // 2
+# hop_len = win_len // 2
+hop_len = nfft // 2
 nb_mel_bands = 40
 sr = 44100
 
@@ -115,8 +183,8 @@ desc_dict = load_desc_file(train_file)
 # desc_dict.update(load_desc_file(evaluate_file)) # contains labels for all the audio in the dataset
 
 # Extract features for all audio files, and save it along with labels
-data = []
-labels = []
+# data = []
+# labels = []
 
 for audio_filename in os.listdir(audio_folder):
     if audio_filename[-3:] != 'kle':
@@ -135,8 +203,8 @@ for audio_filename in os.listdir(audio_folder):
         label[frame_start[ind]:frame_end[ind], val] = 1
 
 
-tmp_feat_file = os.path.join(feat_folder, '{}.npz'.format(audio_file[:-4]))
-np.savez(tmp_feat_file, mbe, label)
+    tmp_feat_file = os.path.join(feat_folder, '{}.npz'.format(audio_file[:-4]))
+    np.savez(tmp_feat_file, mbe, label)
 
 # -----------------------------------------------------------------------
 # Feature Normalization
